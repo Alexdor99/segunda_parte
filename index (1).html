@@ -1,0 +1,689 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuestionario de Inteligencia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl">
+        <h1 class="text-2xl font-bold mb-4 text-center">Cuestionario de Inteligencia</h1>
+        <div id="question-container" class="mb-4">
+            <p id="question-text" class="text-lg font-semibold"></p>
+            <div id="options" class="mt-4 space-y-2"></div>
+        </div>
+        <div id="feedback" class="mt-4 text-center"></div>
+        <div class="mt-6 flex justify-between">
+            <button id="verify-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400" disabled>Verificar Respuesta</button>
+            <button id="next-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" disabled>Siguiente Pregunta</button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                question: "¿Cuál es el primer paso en el ciclo de producción de inteligencia?",
+                options: ["Planificación y Dirección", "Planeación y Dirección", "Búsqueda", "Procesamiento"],
+                correct: "Planeación y Dirección"
+            },
+            {
+                question: "Es una persona entrenada específicamente para la obtención de información de interés para Inteligencia y/o seguridad militar.",
+                options: ["Blanco", "Agente de Seguridad", "Agente de Inteligencia", "Agente de Seguridad personal"],
+                correct: "Agente de Inteligencia"
+            },
+            {
+                question: "Peligro latente que representa la posible manifestación dentro de un periodo de tiempo de un fenómeno peligroso de origen natural, tecnológico o provocado por el hombre, que puede producir efectos adversos al cumplimiento de la misión.",
+                options: ["Riesgo", "Amenaza", "Peligro", "Efectos adversos"],
+                correct: "Amenaza"
+            },
+            {
+                question: "Área geográfica en donde la información obtenida cubrirá un requerimiento específico de información. Las Áreas de Interés Designadas generalmente se ubican para determinar indicadores sobre el desarrollo de los cursos de acción del enemigo o para determinar condiciones específicas del campo de batalla. Las A.I.D confirman o niegan un C.A del enemigo.",
+                options: ["Área de interés designada", "Área de empleo", "Área de Influencia", "Área de Operaciones"],
+                correct: "Área de interés designada"
+            },
+            {
+                question: "Es el área, persona u objetivo hacia el cual se dirige el esfuerzo de búsqueda de Inteligencia.",
+                options: ["Área de interés designada", "Área de empleo", "Área de Influencia", "Blanco"],
+                correct: "Blanco"
+            },
+            {
+                question: "Son todas las medidas de seguridad, activas y pasivas, que ejecuta un Comando, para proteger al personal, material, equipo e instalaciones de las operaciones de Inteligencia que está en capacidad de realizar el enemigo.",
+                options: ["Operaciones", "Seguridad", "Contrainteligencia", "Inteligencia"],
+                correct: "Contrainteligencia"
+            },
+            {
+                question: "Son deficiencias de diferente naturaleza: logística, operativa o administrativa, que se detectan en el enemigo, en el terreno, y que se pueden solucionar antes de iniciar las operaciones o en un corto plazo.",
+                options: ["Capacidades", "Debilidades", "Vulnerabilidades", "Falencias"],
+                correct: "Debilidades"
+            },
+            {
+                question: "Es el conocimiento que resulta del procesamiento de la información, que tiene que ver con el enemigo, el área de operaciones y las condiciones meteorológicas.",
+                options: ["Inteligencia Militar", "Información", "Inteligencia de señales", "Seguridad"],
+                correct: "Inteligencia Militar"
+            },
+            {
+                question: "Operación conducida a través de medios terrestres, navales o aéreos para obtener información sobre el enemigo y el terreno.",
+                options: ["Inteligencia Militar", "Operación Aérea", "Reconocimiento", "Seguridad"],
+                correct: "Reconocimiento"
+            },
+            {
+                question: "Conjunto de medidas que toma un comandante para protegerse de la sorpresa, espionaje, sabotaje y observación del enemigo.",
+                options: ["Inteligencia Militar", "Seguridad", "Reconocimiento", "Seguridad"],
+                correct: "Seguridad"
+            },
+            {
+                question: "Los pasos del Ciclo de Producción de Inteligencia son:",
+                options: [
+                    "Búsqueda de Información, Planeación y Dirección, Procesamiento de la Información, Difusión y uso de inteligencia, Producción de Inteligencia.",
+                    "Planeación y Dirección, Búsqueda de Información, Producción de Inteligencia Procesamiento de la Información, Difusión y uso de inteligencia.",
+                    "Planeación y Dirección, Búsqueda de Información, Procesamiento de la Información, Producción de Inteligencia, Difusión y uso de inteligencia.",
+                    "Planeación y Dirección, Búsqueda de Información, Procesamiento de la Inteligencia militar, Producción de Inteligencia, Difusión y uso de información."
+                ],
+                correct: "Planeación y Dirección, Búsqueda de Información, Procesamiento de la Información, Producción de Inteligencia, Difusión y uso de inteligencia."
+            },
+            {
+                question: "Los pasos de la Planeación y Dirección son:",
+                options: [
+                    "Determinar Indicios, Determinar de los R.I.C.C., Bases para las órdenes y pedidos, Selección de las agencias de búsqueda de Información, Elaboración del Plan de Búsqueda de Información y Estructura del Plan de Búsqueda de Información.",
+                    "Determinar de los R.I.C.C., Determinar Indicios, Bases para las órdenes y pedidos, Selección de las agencias de búsqueda de Información, Elaboración del Plan de Búsqueda de Información y Estructura del Plan de Búsqueda de Información.",
+                    "Determinar de los R.I.C.C., Bases para las órdenes y pedidos, Determinar Indicios, Elaboración del Plan de Búsqueda de Información, Selección de las agencias de búsqueda de Información y Estructura del Plan de Búsqueda de Información.",
+                    "Determinar de los R.I.C.C., Determinar Indicios, Selección de las agencias de búsqueda de Información, Bases para las órdenes y pedidos, Elaboración del Plan de Búsqueda de Información y Estructura del Plan de Búsqueda de Información."
+                ],
+                correct: "Determinar de los R.I.C.C., Determinar Indicios, Bases para las órdenes y pedidos, Selección de las agencias de búsqueda de Información, Elaboración del Plan de Búsqueda de Información y Estructura del Plan de Búsqueda de Información."
+            },
+            {
+                question: "Las partes constitutivas de un R.P.I son:",
+                options: [
+                    "Interrogante principal, interrogante de detalle e indicio.",
+                    "Interrogante fundamental, interrogante de detalle e indicio.",
+                    "Interrogante fundamental, interrogante de desglosada e indicio.",
+                    "Pregunta fundamental, interrogante de detalle e inicio."
+                ],
+                correct: "Interrogante fundamental, interrogante de detalle e indicio."
+            },
+            {
+                question: "Cuando el comandante recibe una misión, la analiza, y de este análisis surgen ciertas preguntas sobre aspectos desconocidos. Estas necesidades constituyen los:",
+                options: [
+                    "Requerimientos de inteligencia críticos del comandante de pelotón.",
+                    "Requerimientos de información críticos del comandante.",
+                    "Requerimientos de información críticos del subcomandante.",
+                    "Requerimientos de inteligencia críticos del comandante."
+                ],
+                correct: "Requerimientos de información críticos del comandante."
+            },
+            {
+                question: "La estructura del Plan de Búsqueda es:",
+                options: [
+                    "RICC, determinación de indicios, bases para órdenes y pedidos, selección de las agencias de búsqueda de información, lugar-fecha/hora entrega de la información y observación.",
+                    "RICC, determinación de órdenes, bases para indicios y pedidos de búsqueda, selección de las agencias de búsqueda de información, lugar-fecha/hora entrega de la información y observación.",
+                    "RICC, determinación de indicios, lugar-fecha/hora entrega de la información, observación, bases para órdenes y pedidos de búsqueda, selección de las agencias de búsqueda de información.",
+                    "RICC, determinación de indicios, bases para órdenes y pedidos de búsqueda, selección de las fuentes de búsqueda de información, lugar-fecha/hora entrega de la información y observación."
+                ],
+                correct: "RICC, determinación de indicios, bases para órdenes y pedidos, selección de las agencias de búsqueda de información, lugar-fecha/hora entrega de la información y observación."
+            },
+            {
+                question: "Son personas, cosas o acciones que proporcionan datos relacionados con el enemigo, terreno y condiciones meteorológicas:",
+                options: ["Fuentes de información", "Agente de información", "Agencia de Búsqueda", "Agencia de Información"],
+                correct: "Fuentes de información"
+            },
+            {
+                question: "Inteligencia militar es:",
+                options: [
+                    "Es el conocimiento que resulta del procesamiento de la información, que tiene que ver con inteligencia estratégica.",
+                    "Aquellos datos, noticias, materiales documentos, que sean escritos, gráficos o hablados que aún no han sido procesados.",
+                    "Es el conocimiento que resulta del procesamiento de la información, que tiene que ver con el enemigo, el área de operaciones y las condiciones meteorológicas.",
+                    "Es el conocimiento que resulta del procesamiento de la información, que tiene que ver con inteligencia Táctica a cerca del enemigo."
+                ],
+                correct: "Es el conocimiento que resulta del procesamiento de la información, que tiene que ver con el enemigo, el área de operaciones y las condiciones meteorológicas."
+            },
+            {
+                question: "Es cualquier persona o unidad, que tiene la misión de buscar información mediante la investigación, vigilancia, entrevistas, u otra forma de explotación de una fuente.",
+                options: ["Fuentes de información", "Agente", "Agencia de Búsqueda", "Agente de Información"],
+                correct: "Agencia de Búsqueda"
+            },
+            {
+                question: "El producto de la Planeación y Dirección es:",
+                options: ["Diario de Información", "Hoja de Tramitación", "Plan de Búsqueda de Información (P.B.I)", "Preparación de Inteligencia en el Campo de Batalla (P.I.C.B)"],
+                correct: "Plan de Búsqueda de Información (P.B.I)"
+            },
+            {
+                question: "El Ciclo de Producción de Inteligencia es?",
+                options: [
+                    "Continuo, permanente, simultaneo e interrelacionado.",
+                    "Continuo, simultaneo e interrelacionado.",
+                    "Continuo, permanente, simultaneo e internacional.",
+                    "Continuo, simultaneo e interrelacionado."
+                ],
+                correct: "Continuo, permanente, simultaneo e interrelacionado."
+            },
+            {
+                question: "Selección de las Agencias de Búsqueda de Información.",
+                options: [
+                    "Capacidad, oportunidad y equidad",
+                    "Capacidad, adecuación, multiplicidad, oportunidad y equidad",
+                    "Capacidad, adecuación, multiplicidad, oportunidad y eficaz",
+                    "Capacidad, adecuado, múltiple, oportunidad y equidad"
+                ],
+                correct: "Capacidad, adecuación, multiplicidad, oportunidad y equidad"
+            },
+            {
+                question: "¿Cuál es la estructura del Ciclo de Producción de Inteligencia (CPI)?",
+                options: [
+                    "Planificación y dirección, búsqueda, procesamiento, producción y difusión.",
+                    "Planificación y dirección, búsqueda, procesamiento y producción.",
+                    "Planificación y dirección, búsqueda, procesamiento, producción, difusión y aplicación.",
+                    "Planificación y dirección, búsqueda, procesamiento, producción y difusión."
+                ],
+                correct: "Planificación y dirección, búsqueda, procesamiento, producción y difusión."
+            },
+            {
+                question: "Cuáles son los niveles de Inteligencia",
+                options: [
+                    "Inteligencia estratégica, inteligencia de señales e inteligencia táctica.",
+                    "Inteligencia militar, inteligencia operativa e inteligencia táctica.",
+                    "Inteligencia estratégica, inteligencia operativa e inteligencia táctica.",
+                    "Inteligencia ambiental, inteligencia operativa e inteligencia táctica."
+                ],
+                correct: "Inteligencia estratégica, inteligencia operativa e inteligencia táctica."
+            },
+            {
+                question: "De acuerdo al Manual Básico de Inteligencia militar, en la cual nos indica que 'Fuente de Información': Son personas, cosas (materiales/documentos) o acciones que proporcionan datos relacionados con el enemigo, el terreno y las condiciones meteorológicas, bajo este contexto indica las fuentes de información, de la cual se puede extraer información acerca del enemigo, terreno y condiciones meteorológicas.",
+                options: [
+                    "Prensa escrita, actividades del enemigo, prisioneros de guerra, personal escapado y evadido; y cartas.",
+                    "Historias, actividades del enemigo, prisioneros de guerra, personal escapado y evadido; y cartas.",
+                    "Fabulas, actividades del enemigo, prisioneros de guerra, personal escapado y evadido; y cartas.",
+                    "Prensa escrita, actividades del enemigo, prisioneros de guerra, personal escapado y evadido; y cartas personales."
+                ],
+                correct: "Prensa escrita, actividades del enemigo, prisioneros de guerra, personal escapado y evadido; y cartas."
+            },
+            {
+                question: "Cuáles son las disciplinas de Inteligencia:",
+                options: [
+                    "Inteligencia humana, inteligencia de imágenes, inteligencia de señales, inteligencia estratégica y derivada de las condiciones meteorológicas.",
+                    "Inteligencia operativa, inteligencia de imágenes, inteligencia de señales e inteligencia derivada de las condiciones meteorológicas.",
+                    "Inteligencia humana, inteligencia de imágenes, inteligencia de señales e inteligencia derivada de las condiciones meteorológicas.",
+                    "Inteligencia humana, inteligencia de imágenes, inteligencia de señales, inteligencia derivada de las condiciones meteorológicas e inteligencia convencional."
+                ],
+                correct: "Inteligencia humana, inteligencia de imágenes, inteligencia de señales e inteligencia derivada de las condiciones meteorológicas."
+            },
+            {
+                question: "Cuáles son las operaciones fundamentales de Inteligencia.",
+                options: [
+                    "Espionaje, subversión, sabotaje y contra subversión",
+                    "Espionaje, subversión, sabotaje y contraespionaje",
+                    "Espionaje, subversión y sabotaje",
+                    "Espionaje, subversión, sabotaje y contra sabotaje"
+                ],
+                correct: "Espionaje, subversión y sabotaje"
+            },
+            {
+                question: "Cuáles son los Principios Básicos de Operaciones de Inteligencia.",
+                options: [
+                    "Oportuna, flexible, imaginativa, interdependiente, continua, segura y táctica.",
+                    "Oportuna, flexible, imaginativa, interdependiente, continua, segura y útil",
+                    "Oportuna, flexible, imaginativa, continua, segura y útil",
+                    "Oportuna, flexible, interdependiente, continua, segura y útil"
+                ],
+                correct: "Oportuna, flexible, imaginativa, interdependiente, continua, segura y útil"
+            },
+            {
+                question: "Cuáles son los escalones de la defensa en las operaciones defensivas",
+                options: [
+                    "Escalón de seguridad, escalón de resistencia, escalón de reserva y en la retaguardia.",
+                    "Escalón de seguridad, escalón de vanguardia, escalón de reserva y en la retaguardia.",
+                    "Escalón de seguridad, escalón de flanguardia, escalón de reserva y en la retaguardia.",
+                    "Escalón de refuerzo, escalón de resistencia, escalón de reserva y en la retaguardia."
+                ],
+                correct: "Escalón de seguridad, escalón de resistencia, escalón de reserva y en la retaguardia."
+            },
+            {
+                question: "Los E.E.I se refieren a la información de fuerzas propias, que permite evaluar:",
+                options: [
+                    "Nuestras capacidades y debilidades, a fin de adelantar operaciones de Contrainteligencia para protegernos de las actividades de Inteligencia y de las operaciones del enemigo.",
+                    "Capacidades y debilidades del enemigo, a fin de adelantar operaciones de Contrainteligencia para protegernos de las actividades de Inteligencia y de las operaciones.",
+                    "Nuestras capacidades y debilidades, a fin de adelantar operaciones de inteligencia para protegernos de las actividades de contrainteligencia y de las operaciones del enemigo.",
+                    "Nuestras capacidades y vulnerabilidades, a fin de adelantar operaciones de Contrainteligencia para protegernos de las actividades de Inteligencia y de las operaciones del enemigo."
+                ],
+                correct: "Nuestras capacidades y debilidades, a fin de adelantar operaciones de Contrainteligencia para protegernos de las actividades de Inteligencia y de las operaciones del enemigo."
+            },
+            {
+                question: "Los R.P.I constituyen toda la información sobre el enemigo que nos permite evaluar:",
+                options: [
+                    "Las capacidades, debilidades y vulnerabilidades que tiene fuerzas propias.",
+                    "Las capacidades, debilidades que tiene el enemigo.",
+                    "Las capacidades, debilidades y vulnerabilidades que tiene el enemigo.",
+                    "Las capacidades, debilidades y fortaleza que tiene el enemigo."
+                ],
+                correct: "Las capacidades, debilidades y vulnerabilidades que tiene el enemigo."
+            },
+            {
+                question: "Los R.P.I y E.E.I constan de:",
+                options: [
+                    "Interrogante fundamental, interrogante de detalle, Indicio o evidencia",
+                    "Interrogante fundamental, interrogantes directas, Indicio o evidencia",
+                    "Interrogante fundamental, interrogante cerrada, Indicio o evidencia",
+                    "Interrogante fundamental, interrogante indirecta, Indicio o evidencia"
+                ],
+                correct: "Interrogante fundamental, interrogante de detalle, Indicio o evidencia"
+            },
+            {
+                question: "El sabotaje es una operación fundamental de inteligencia que tiene la finalidad:",
+                options: [
+                    "Debilitar las capacidades del enemigo y sus elementos de apoyo, mitigar su voluntad de lucha.",
+                    "Fortalecer las capacidades del enemigo y sus elementos de apoyo, mitigar su voluntad de lucha.",
+                    "Debilitar las capacidades del enemigo y sus elementos de apoyo, mitigar su voluntad de lucha y táctica.",
+                    "Vulnerar las capacidades del enemigo y sus elementos de apoyo, mitigar su voluntad de lucha."
+                ],
+                correct: "Debilitar las capacidades del enemigo y sus elementos de apoyo, mitigar su voluntad de lucha."
+            },
+            {
+                question: "En el ciclo de producción de inteligencia no puede existir interrupción en la producción de inteligencia. A que aspecto se refiere?",
+                options: ["Interrelacionado", "Permanente", "Simultaneo", "Continuo"],
+                correct: "Continuo"
+            },
+            {
+                question: "El militar entrenado específicamente para la obtención de a información de interés para inteligencia y/o seguridad militar ¡Que tipo de inteligencia obtiene?",
+                options: ["Inteligencia básica", "Inteligencia", "Inteligencia estratégica", "Inteligencia táctica"],
+                correct: "Inteligencia táctica"
+            },
+            {
+                question: "Durante el conflicto del alto Cenepa los agentes de inteligencia fueron destinados a las diferentes patrullas y observatorios de la zona de conflicto, con la finalidad de obtener información del dispositivo, composición y efectivo del enemigo, la misma que era canalizada inmediatamente al puesto de mando para su análisis. ¿que principio de inteligencia aplicaron los agentes de inteligencia.",
+                options: ["Imaginativa", "Oportuna", "Segura", "Interdependiente"],
+                correct: "Oportuna"
+            },
+            {
+                question: "Las Vigilancias, el acceso y penetración, redes de informantes. ¿A que tipo de procedimiento le corresponde?",
+                options: [
+                    "Procedimiento de inteligencia encubierto",
+                    "Procedimiento de inteligencia especial",
+                    "Procedimiento de inteligencia abierto",
+                    "Procedimiento de contrainteligencia"
+                ],
+                correct: "Procedimiento de inteligencia encubierto"
+            },
+            {
+                question: "El Destacamento de inteligencia 'LAMPARA' ha evidenciado que el Tnte. Pedro Álvarez tomó contacto con la sujeto (a) LA COLORADA, por lo que procede ha realizar los informes respectivos y remitirlos al GIM. ¿Cómo se lo considera al DIM'LAMPARA'?",
+                options: ["Unidad Militar", "Informante", "Agente", "Agencia"],
+                correct: "Agencia"
+            },
+            {
+                question: "El documento de trabajo que permite hacer un proceso de análisis de los RPI y constituye al mismo tiempo un esquema de exploración basado en ese análisis, se denomina:",
+                options: ["Plan de búsqueda de información", "Carta de Situación", "Diario de Información", "Hoja de trabajo"],
+                correct: "Plan de búsqueda de información"
+            },
+            {
+                question: "El CPI es un proceso de mucha importancia para el Oficial de Inteligencia. ¿Señale cuál de los pasos del Ciclo de Producción de Inteligencia se considera el más importante?",
+                options: ["Búsqueda de información", "Producción de Inteligencia", "Procesamiento de Información", "Difusión de Información"],
+                correct: "Producción de Inteligencia"
+            },
+            {
+                question: "El Plan de búsqueda es un documento que facilita al oficial de inteligencia planificar y dar seguimiento a la obtención de la información. ¿Señale cuál es el objetivo de este documento?",
+                options: ["Procesar información obtenida", "Recopilar indicios", "Difundir la información procesada", "Emisión de órdenes y pedidos"],
+                correct: "Emisión de órdenes y pedidos"
+            },
+            {
+                question: "El CPI es un proceso de mucha importancia para el Oficial de Inteligencia. ¿Cuál de los pasos del CPI se considera el más difícil?",
+                options: ["Procesamiento de información", "Producción de Inteligencia", "Búsqueda de Información", "Difusión de Información"],
+                correct: "Búsqueda de Información"
+            },
+            {
+                question: "Existen cuatro documentos básicos de registro de la información que recibe la sección de inteligencia, ¿En cual de ellos se lleva por asuntos de la misma naturaleza los informes que reciben sobre el enemigo, las condiciones meteorológicas y el terreno?",
+                options: [
+                    "Hoja de trabajo del Oficial de Inteligencia",
+                    "Diario de Inteligencia",
+                    "Diario de información",
+                    "Hoja de tramitación"
+                ],
+                correct: "Hoja de trabajo del Oficial de Inteligencia"
+            },
+            {
+                question: "La tarea por medio de la cual los organismos pertinentes emiten la inteligencia producida hacia los comandos en todos sus niveles y en la medida que le corresponde. ¿A que actividad se refiere?",
+                options: ["Difusión", "Evaluación", "Interpretación", "Análisis"],
+                correct: "Difusión"
+            },
+            {
+                question: "Indique ¿Cuál es la diferencia fundamental entre información e inteligencia?",
+                options: [
+                    "Que la inteligencia se obtiene con mayor rapidez que la información",
+                    "Que la información se reporta con mayor rapidez que la inteligencia",
+                    "Que la inteligencia es información procesada",
+                    "Que la información es inteligencia procesada"
+                ],
+                correct: "Que la inteligencia es información procesada"
+            },
+            {
+                question: "A que paso del CPI se refiere el siguiente enunciado? El auxiliar de inteligencia actualiza la carta de situación del enemigo, registra la información tanto en forma cronológica como por campos?",
+                options: [
+                    "Procesamiento de la información",
+                    "Búsqueda de información",
+                    "Orientación del esfuerzo de búsqueda",
+                    "Producción de inteligencia"
+                ],
+                correct: "Procesamiento de la información"
+            },
+            {
+                question: "Los factores del OB ayudan a comprender la situación del enemigo, existe un factor que hace referencia a la descripción de la manera cómo el enemigo conduce una operación en conformidad con la doctrina. ¿Indique a que factor le corresponde la característica mencionada en el texto?",
+                options: ["Dispositivo", "Táctica", "Efectivos", "Composición"],
+                correct: "Táctica"
+            },
+            {
+                question: "¿Cómo se denomina a todas las medidas de seguridad, activas y pasivas, que ejecuta un Comando, para proteger al personal, material, equipo e instalaciones de las operaciones de Inteligencia que está en capacidad de realizar el enemigo?",
+                options: ["Información de archivo", "Información militar", "Información básica", "Contrainteligencia"],
+                correct: "Contrainteligencia"
+            },
+            {
+                question: "La definición referente a las deducciones hechas con respecto a las capacidades actuales y futuras del enemigo; las vulnerabilidades y los posibles cursos de acción que tenga a su alcance y que puedan afectar el cumplimiento de la misión. ¿A que definición se refiere el texto mencionado?",
+                options: ["Información militar", "Inteligencia militar", "Fuente de Información", "Información"],
+                correct: "Inteligencia militar"
+            },
+            {
+                question: "Es el área geográfica, parte del Área de Operaciones, donde un comandante es capaz de influenciar directamente en las operaciones a través de los sistemas de apoyo de fuego ¿Ésta definición a que aspecto se refiere?",
+                options: ["Área de Influencia", "Área de interés", "Fuente de Información", "Información"],
+                correct: "Área de Influencia"
+            },
+            {
+                question: "Es cualquier condición o circunstancia sobre la situación de una fuerza o de la zona de operaciones, que lleva a esa fuerza a ser proclive de sufrir daños, engaño o ser derrotada. ¿Indique, a que definición corresponde?",
+                options: ["Indicio", "Vulnerabilidad", "E.E.I.A", "Debilidad"],
+                correct: "Vulnerabilidad"
+            },
+            {
+                question: "La definición referente a los aspectos que constituyen la información que necesita el comandante para apoyar su visualización del campo de batalla y tomar decisiones críticas, especialmente en lo que se refiere a los cursos de acción. ¿A que definición se refiere el texto mencionado?",
+                options: ["RPI", "RICC", "RIFA", "E.E.I.A"],
+                correct: "RICC"
+            },
+            {
+                question: "Proceso continuo y sistemático de análisis del enemigo y del escenario en un área geográfica específica, que está diseñado para apoyar el Proceso Militar en la Toma de Decisiones (P.M.T.D). ¿A qué definición se refiere el texto mencionado?",
+                options: ["PICB", "PLT", "AICB", "PMTD"],
+                correct: "PICB"
+            },
+            {
+                question: "Es el empleo de más de una Agencia para obtener información sobre un mismo asunto, a fin de confirmar su veracidad. ¿A que definición se refiere?",
+                options: ["Adaptabilidad", "Capacidad", "Multiplicidad", "Oportunidad"],
+                correct: "Multiplicidad"
+            },
+            {
+                question: "Cuando a una Unidad de Inteligencia se le entrega bajo control operacional un equipo de Inteligencia Técnica para fines de investigación. ¿Indique, qué relación de mando corresponde acorde al concepto de vinculación de mando o vinculación de dependencia?",
+                options: ["Agregada", "Asignada", "Control operacional", "Orgánica"],
+                correct: "Control operacional"
+            },
+            {
+                question: "Es el área, persona u objetivo hacia el cual se dirige el esfuerzo de búsqueda de Inteligencia. ¿A que definición se refiere el texto mencionado?",
+                options: ["Blanco de interés", "Objetivo Interés", "Blanco", "Objetivo"],
+                correct: "Blanco"
+            },
+            {
+                question: "¿Es utilizado para transmitir información, Inteligencia, órdenes o pedidos entre la Unidad de Inteligencia y la Unidad apoyada, es?",
+                options: ["Canal de Inteligencia", "Canal del SOCB", "Canal técnico", "Canal de mando"],
+                correct: "Canal de mando"
+            },
+            {
+                question: "Son pruebas que apuntan hacia posibilidades, vulnerabilidades y posibles cursos de acción (C.A) del enemigo. ¿A que definición se refiere el texto mencionado?",
+                options: ["Hecho", "Necesidad", "Indicio", "Validez"],
+                correct: "Indicio"
+            },
+            {
+                question: "La definición referente a una operación fundamental de Inteligencia, principalmente clandestina o secreta, destinada a debilitar el poder militar, económico, psicosocial, moral o político del enemigo, mediante el empleo planificado de las operaciones psicológicas y otras acciones de hecho. ¿A que tipo de inteligencia se refiere?",
+                options: ["Sabotaje", "Subversión", "Contraespionaje", "Contrainteligencia"],
+                correct: "Subversión"
+            },
+            {
+                question: "A que se refiere el siguiente aspecto?: Se menciona la identificación y organización de las unidades.",
+                options: ["Dispositivo", "Efectivos", "Composición", "Adiestramiento"],
+                correct: "Composición"
+            },
+            {
+                question: "El conocimiento de la Inteligencia del O.B, al igual que el conocimiento del enemigo, terreno y condiciones meteorológicas, permitirá establecer las capacidades, vulnerabilidades y probables cursos de acción que puede adoptar el enemigo. ¿Indique a que se refiere este enunciado?",
+                options: [
+                    "Inteligencia del enemigo",
+                    "Inteligencia de batalla",
+                    "Inteligencia del Orden de Batalla",
+                    "Inteligencia de capacidades"
+                ],
+                correct: "Inteligencia del Orden de Batalla"
+            },
+            {
+                question: "El Estudio de Área contiene una serie de datos de interés para Inteligencia, sobre determinada área geográfica y le sirve al comandante para familiarizarse con la misma. ¿A que aspecto se refiere?",
+                options: ["Estudio de sector", "Estudio de Área", "Estudio prospectivo", "Estudio de Inteligencia"],
+                correct: "Estudio de Área"
+            },
+            {
+                question: "Son todos los datos, noticias, materiales, hechos, documentos u objetos que sirven para obtener o aumentar conocimientos sobre un enemigo hipotético o real, un área de operaciones y unas condiciones meteorológicas; es material no valuado que aún no ha sido procesado. ¿Indique a que definición básica de inteligencia corresponde?",
+                options: ["Inteligencia militar", "Fuentes de información", "Información Militar", "Información"],
+                correct: "Información"
+            },
+            {
+                question: "Existen varios indicios que pueden alertar la ejecución de una operación militar especifica, si usted conoce que el enemigo ha ocupado un área de reunión avanzada. ¿A que indicio se refiere?",
+                options: ["Repliegue", "Ataque", "Defensa", "Refuerzo"],
+                correct: "Ataque"
+            },
+            {
+                question: "El Ciclo de Producción de Inteligencia es un proceso racional y lógico de actividades, que sigue una información para transformarse en Inteligencia Militar útil al comandante.",
+                options: [
+                    "Inteligencia útil",
+                    "Principios de inteligencia",
+                    "Ciclo de producción de inteligencia",
+                    "Proceso de inteligencia"
+                ],
+                correct: "Ciclo de producción de inteligencia"
+            },
+            {
+                question: "Es el área geográfica asignada a un Comandante para conducir operaciones militares con responsabilidad y autoridad. Los límites del Área de Operaciones son normalmente los límites asignados a la Unidad en la Orden de operaciones del escalón superior. ¿ésta definición a que aspecto corresponde?",
+                options: ["Área de trenes", "Área de influencia", "Área de interés", "Área de operaciones"],
+                correct: "Área de operaciones"
+            },
+            {
+                question: "Agencia es cualquier persona, Unidad u organización que obtiene información mediante investigación, observación o entrevista de una fuente. ¿Esta definición a que aspecto corresponde?",
+                options: ["Fuentes", "Agentes", "Destacamentos", "Agencias"],
+                correct: "Agencias"
+            },
+            {
+                question: "Se obtiene al recopilar, localizar, procesar, analizar y presentar los informes de emisores interceptados de comunicaciones y no comunicaciones (radares). ¿A que concepto se refiere?",
+                options: ["Inteligencia de señales", "Inteligencia técnica", "Inteligencia de imágenes", "Inteligencia humana"],
+                correct: "Inteligencia de señales"
+            },
+            {
+                question: "Es la combinación de los elementos separados de las diferentes informaciones conocidas, para formar un concepto lógico de las actividades del enemigo o de la influencia de las características del área de operaciones sobre la misión de la Unidad. ¿Cómo se denomina esta actividad?",
+                options: ["Confiabilidad", "Integración", "Evaluación", "Deducción"],
+                correct: "Integración"
+            },
+            {
+                question: "La secretaria de inteligencia, que es el ente rector de la inteligencia del país, a que nivel corresponde. ¿A que nivel corresponde?",
+                options: ["Estratégico", "Táctico", "Político", "Operativo"],
+                correct: "Estratégico"
+            },
+            {
+                question: "¿A que interrogantes deben responder un informe al instante?",
+                options: [
+                    "Quien, Que, Cuando, Donde, Como",
+                    "Quien, Que, Cuando, Donde, Para que",
+                    "Quien, Que, A fin de que, Donde, Como",
+                    "Quien, Que, Cuando, Donde, Por que"
+                ],
+                correct: "Quien, Que, Cuando, Donde, Para que"
+            },
+            {
+                question: "¿Dentro de la planificación y dirección existe unos subprocesos que son:",
+                options: [
+                    "RICC, plan de búsqueda, órdenes y pedidos",
+                    "RICC, plan de búsqueda, ordenes de trabajo",
+                    "RICC, plan de búsqueda, pedidos",
+                    "RICC, plan de búsqueda, pedidos y soluciones"
+                ],
+                correct: "RICC, plan de búsqueda, órdenes y pedidos"
+            },
+            {
+                question: "En la elaboración del Plan de búsqueda de información es un documento de trabajo y no de difusión que permite orientar el proceso de búsqueda de información:",
+                options: [
+                    "Es elaborado para obtener información de toda o parte de una operación y debe ser actualizado de acuerdo con el desarrollo de las operaciones y la satisfacción de los requerimientos.",
+                    "Es elaborado para obtener información de toda o parte de una operación y no debe ser actualizado de acuerdo con el desarrollo de las operaciones y la satisfacción de los requerimientos.",
+                    "Es elaborado para obtener información solo de una parte de una operación y debe ser actualizado de acuerdo con el desarrollo de las operaciones y la satisfacción de los requerimientos.",
+                    "Es elaborado para obtener información y pedidos de una parte de la operación y debe ser actualizado de acuerdo con el desarrollo de las operaciones y la satisfacción de los requerimientos."
+                ],
+                correct: "Es elaborado para obtener información de toda o parte de una operación y debe ser actualizado de acuerdo con el desarrollo de las operaciones y la satisfacción de los requerimientos."
+            },
+            {
+                question: "El producto final del Plan de Búsqueda de Información es:",
+                options: [
+                    "La emisión de órdenes y pedidos a las diferentes agencias.",
+                    "La emisión de órdenes y pedidos al mando",
+                    "La emisión de órdenes y pedidos al escalón superior",
+                    "La emisión de órdenes de trabajo a las diferentes unidades"
+                ],
+                correct: "La emisión de órdenes y pedidos a las diferentes agencias."
+            },
+            {
+                question: "La Búsqueda de Información comprende:",
+                options: [
+                    "La explotación sistemática de las fuentes de información por las agencias de búsqueda, mediante el empleo adecuado de actividades y técnicas especiales que permitan completar las necesidades de información contenidas en los pedidos.",
+                    "La explotación completa de las fuentes de información por las agencias de búsqueda, mediante el empleo adecuado de actividades y técnicas especiales que permitan satisfacer las necesidades de información contenidas en los R.P.I, E.E.I",
+                    "La explotación completa de las fuentes de información por las agencias de búsqueda, mediante el empleo adecuado de actividades y tácticas especiales que permitan satisfacer las necesidades de información contenidas en los R.P.I, E.E.I",
+                    "La explotación sistemática de las fuentes de información por las agencias de búsqueda, mediante el empleo adecuado de actividades y técnicas especiales que permitan satisfacer las necesidades de información contenidas en los R.P.I, E.E.I"
+                ],
+                correct: "La explotación sistemática de las fuentes de información por las agencias de búsqueda, mediante el empleo adecuado de actividades y técnicas especiales que permitan satisfacer las necesidades de información contenidas en los R.P.I, E.E.I"
+            },
+            {
+                question: "Son deficiencias de diferente naturaleza: logística, operativa o administrativa, que se detectan en el enemigo, en el terreno, y que se pueden solucionar antes de iniciar las operaciones o en un corto plazo.",
+                options: ["Debilidad", "Vulnerabilidad", "Capacidad", "Fundamento"],
+                correct: "Debilidad"
+            },
+            {
+                question: "A que paso del CPI se refiere el siguiente enunciado? Se realiza entrevistas a prisioneros de guerra, recopilan los pertrechos militares dejados por el enemigo y capturados.",
+                options: [
+                    "Búsqueda de información",
+                    "Procesamiento de información",
+                    "Orientación del esfuerzo de búsqueda de información",
+                    "Producción de inteligencia"
+                ],
+                correct: "Búsqueda de información"
+            },
+            {
+                question: "Es el conocimiento de las capacidades y vulnerabilidades de las naciones extranjeras amigas, enemigas o neutrales que pueden intervenir en un conflicto bélico, así como las características de los posibles teatros de operaciones donde se emplearán las mismas.",
+                options: [
+                    "Información militar estratégica",
+                    "Información estratégica",
+                    "Inteligencia estratégica",
+                    "Fuente de información estratégica"
+                ],
+                correct: "Inteligencia estratégica"
+            },
+            {
+                question: "Es una operación fundamental de Contrainteligencia Pasiva, que se ocupa de la seguridad y salud ocupacional, seguridad física, electrónica e industrial de las instalaciones militares, transportes, personal, informática.",
+                options: [
+                    "Seguridad de personal",
+                    "Seguridad general",
+                    "Seguridad integral",
+                    "Seguridad a personas importantes"
+                ],
+                correct: "Seguridad integral"
+            },
+            {
+                question: "Contrainteligencia Pasiva, mediante la cual se comprueba la veracidad de los datos recogidos en la declaración de historial de personal (D.H.P), con el propósito de establecer la confiabilidad e idoneidad del personal que labora en las instalaciones militares. ¿A que tipo de operación de contrainteligencia se refiere?",
+                options: [
+                    "Investigación de seguridad de personal",
+                    "Seguridad general",
+                    "Protección a personas muy importantes",
+                    "Seguridad Integral"
+                ],
+                correct: "Investigación de seguridad de personal"
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let selectedAnswer = null;
+
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options');
+        const feedback = document.getElementById('feedback');
+        const verifyBtn = document.getElementById('verify-btn');
+        const nextBtn = document.getElementById('next-btn');
+
+        function loadQuestion() {
+            const q = questions[currentQuestionIndex];
+            questionText.textContent = `${currentQuestionIndex + 1}. ${q.question}`;
+            optionsContainer.innerHTML = '';
+            q.options.forEach((option, index) => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <input type="radio" name="option" id="option${index}" value="${option}" class="mr-2">
+                    <label for="option${index}">${option}</label>
+                `;
+                optionsContainer.appendChild(div);
+            });
+            feedback.textContent = '';
+            verifyBtn.disabled = true;
+            nextBtn.disabled = currentQuestionIndex === questions.length - 1;
+            selectedAnswer = null;
+
+            document.querySelectorAll('input[name="option"]').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    selectedAnswer = e.target.value;
+                    verifyBtn.disabled = false;
+                });
+            });
+        }
+
+        verifyBtn.addEventListener('click', () => {
+            const correctAnswer = questions[currentQuestionIndex].correct;
+            if (selectedAnswer === correctAnswer) {
+                feedback.textContent = '¡Correcto!';
+                feedback.className = 'mt-4 text-center text-green-600';
+            } else {
+                feedback.textContent = `Incorrecto. La respuesta correcta es: ${correctAnswer}`;
+                feedback.className = 'mt-4 text-center text-red-600';
+            }
+            verifyBtn.disabled = true;
+            nextBtn.disabled = false;
+            document.querySelectorAll('input[name="option"]').forEach(input => input.disabled = true);
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion();
+            }
+        });
+
+        loadQuestion();
+    </script>
+</body>
+</html>
